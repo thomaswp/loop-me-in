@@ -1,4 +1,5 @@
 import { AudioClip } from "./AudioClip";
+import { Timer } from "./Timer";
 
 export class AudioRecorder {
     static isSupported() : boolean {
@@ -11,6 +12,7 @@ export class AudioRecorder {
 
     static mediaStream: MediaStream;
 
+    offset: number;
     chunks: BlobPart[];
     fileName: string;
     mediaRecorder: MediaRecorder;
@@ -45,10 +47,11 @@ export class AudioRecorder {
             .then(onSuccess, onError);
     }
 
-    constructor() {
+    constructor(offset: number) {
         if (!AudioRecorder.isReady()) {
             throw 'Audio not ready!';
         }
+        this.offset = offset;
         this.chunks = [];
         this.fileName = 'audio'
         this.mediaRecorder = new MediaRecorder(AudioRecorder.mediaStream);
@@ -66,14 +69,14 @@ export class AudioRecorder {
         // console.log("recorder started");
     }
 
-    stop(callback: (clip: AudioClip) => void) {
+    stop(timer: Timer, callback: (clip: AudioClip) => void) {
         if (!this.recording) return;
         this.mediaRecorder.onstop = () => {
             // console.log('stop', this.chunks);
             const blob = new Blob(this.chunks, { 'type' : 'audio/ogg; codecs=opus' });
             const audioURL = window.URL.createObjectURL(blob);
             const duration = new Date().getTime() - this.startTime.getTime();
-            const clip = new AudioClip(audioURL, duration);
+            const clip = new AudioClip(timer, audioURL, this.offset, duration);
             callback(clip);
         };
         this.recording = false;

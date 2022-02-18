@@ -2,7 +2,6 @@
   <div>
       <h2>Clip</h2>
       <p>Duration: {{ duration }}</p>
-      <audio controls='true' ref='audio' :src='clip.path' />
   </div>
 </template>
 
@@ -23,7 +22,7 @@ export default {
   },
   computed: {
     duration() : Number {
-      return this.clip.durationMS;
+      return this.clip.duration;
     },
     // size() : Number {
     //     // console.log(this.chunks[0]);
