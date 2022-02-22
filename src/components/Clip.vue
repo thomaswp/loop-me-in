@@ -9,7 +9,10 @@
         <button class="mute" @click="clip.toggleMuted">
           {{ clip.muted ? '🔈' : '🔊' }}
         </button>
-      <div>
+        <button class="delete" @click="$emit('deleted', clip)">
+          ❌
+        </button>
+      </div>
     </template>
   </div>
 </template>

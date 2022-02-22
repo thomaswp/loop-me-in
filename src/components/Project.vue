@@ -18,9 +18,10 @@
       v-for="clip in clips"
       :key="clip"
       :clip="clip"
+      @deleted="deleteClip"
     />
   </div>
-  <button @click="toggleRecord" :disabled="!timer.playing">{{ !recording ? "Record" : "Stop"}}</button>
+  <button @click="toggleRecord">{{ !recording ? "Record" : "Stop"}}</button>
 </template>
 
 <script lang="ts">
@@ -68,6 +69,7 @@ export default {
     },
 
     startClip() {
+      if (!this.playing) this.timer.play();
       if (this.recording) return;
       this.audioRecorder = new AudioRecorder(
         // We offset the start time to account for mic delays
@@ -80,8 +82,16 @@ export default {
       this.audioRecorder.stop(this.timer, (audioURL) => {
         console.log("stopping:", audioURL, this.clips);
         this.clips.push(audioURL);
-        this.audioRecorder = null;
       });
+      this.audioRecorder = null;
+    },
+
+    deleteClip(clip: AudioClip) {
+      clip.delete();
+      let index = this.clips.indexOf(clip);
+      if (index >= 0) {  
+        this.clips.splice(index, 1);
+      }
     },
 
     pause() {
@@ -124,7 +134,13 @@ export default {
       new AudioClip(this.timer, clickTrackURL, 2000, 2000),
       new AudioClip(this.timer, clickTrackURL, 4000, 2000),
       new AudioClip(this.timer, clickTrackURL, 6000, 2000),
-    ]
+    ];
+    this.timer.onLoop.add(() => {
+      console.log('loop!');
+      if (!this.recording) return;
+      this.stopClip();
+      this.startClip();
+    });
   },
 };
 </script>

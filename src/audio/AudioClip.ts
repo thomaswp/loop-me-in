@@ -8,7 +8,7 @@ export class AudioClip {
     readonly timer: Timer;
     readonly onPlayingChanged = new ChangeHandler<boolean>(false);
 
-    muted = false;
+    _muted = false;
     // volume = 100;
     _volume = 100;
 
@@ -19,7 +19,10 @@ export class AudioClip {
         this.timer = timer;
         this.source = source;
         this.duration = duration;
-        this.offset = offset < 0 ? offset + this.timer.loopDuration : offset;
+        // this.offset = offset < 0 ? offset + this.timer.loopDuration : offset;
+        // Use negative offsets for really-late starting clips so they get played.
+        if (offset > timer.loopDuration - 500) offset -= timer.loopDuration;
+        this.offset = offset;
         this.audio = new Audio(source);
         this.audio.onloadeddata = () => {
             this.loaded = true;
@@ -28,18 +31,14 @@ export class AudioClip {
 
         timer.onPlay.add(_ => {
             this.tryPlay();
-        });
+        }, this);
 
-        timer.onPause.add(_ => this.pause());
+        timer.onPause.add(_ => this.pause(), this);
     }
 
     get playing() {
         const time = this.timer.time;
         return time >= this.offset && time <= this.offset + this.duration;
-    }
-
-    get volume() {
-        return this._volume;
     }
 
     get end() {
@@ -50,9 +49,22 @@ export class AudioClip {
         return this.timer.loopDuration;
     }
 
-    set volume(value : number) {
+    get volume() {
+        return this._volume;
+    }
+
+    set volume(value: number) {
         this._volume = value;
         this.audio.volume = value / 100;
+    }
+
+    get muted() {
+        return this._muted
+    }
+
+    set muted(value: boolean) {
+        this._muted = value;
+        if (!value && this.playing) this.tryPlay();
     }
 
     tryPlay() {
@@ -108,5 +120,11 @@ export class AudioClip {
         } else {
             this.tryPlay();
         }
+    }
+
+    delete() {
+        this.pause();
+        this.timer.onPlay.remove(this);
+        this.timer.onPause.remove(this);
     }
 }
