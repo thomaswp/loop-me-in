@@ -1,4 +1,4 @@
-export class Event<T> {
+export class Handler<T> {
     private handlers = new Map();
     private nextKey = 0;
 
@@ -14,5 +14,20 @@ export class Event<T> {
 
     emit(data: T) {
         this.handlers.forEach(h => h(data));
+    }
+}
+
+export class ChangeHandler<T> extends Handler<T> {
+    private lastValue : T;
+
+    constructor(startValue : T) {
+        super();
+        this.lastValue = startValue;
+    }
+    
+    emit(data: T) {
+        if (data == this.lastValue) return;
+        this.lastValue = data;
+        super.emit(data);
     }
 }

@@ -1,12 +1,12 @@
-import { Event } from "../util/Event";
+import { Handler } from "../util/Handler";
 
 export class Timer {
 
     playing = false;
     loopDuration: number;
 
-    readonly onPlay = new Event<number>();
-    readonly onPause = new Event<number>();
+    readonly onPlay = new Handler<number>();
+    readonly onPause = new Handler<number>();
 
     private lastPlayPauseTime = 0;
     private playStartDate: Date;

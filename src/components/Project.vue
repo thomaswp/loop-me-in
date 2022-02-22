@@ -13,11 +13,13 @@
   <p>
     Clips: {{ clips.length }}
   </p>
-  <clip
-    v-for="clip in clips"
-    :key="clip"
-    :clip="clip"
-  />
+  <div class="clip-container">
+    <clip
+      v-for="clip in clips"
+      :key="clip"
+      :clip="clip"
+    />
+  </div>
   <button @click="toggleRecord" :disabled="!timer.playing">{{ !recording ? "Record" : "Stop"}}</button>
 </template>
 
@@ -130,6 +132,15 @@ export default {
 
 .scrubber {
   width: 80%;
+}
+
+.clip-container {
+  width: 80%;
+  border: 2px black solid;
+  background-color: #eee;
+  margin-left: auto;
+  margin-right: auto;
+  text-align: left;
 }
 
 </style>

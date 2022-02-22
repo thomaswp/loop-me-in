@@ -1,3 +1,4 @@
+import { ChangeHandler } from "../util/Handler";
 import { Timer } from "./Timer";
 
 export class AudioClip {
@@ -5,6 +6,11 @@ export class AudioClip {
     readonly duration: number;
     readonly offset: number;
     readonly timer: Timer;
+    readonly onPlayingChanged = new ChangeHandler<boolean>(false);
+
+    muted = false;
+    // volume = 100;
+    _volume = 100;
 
     private audio: HTMLAudioElement;
     private loaded = false;
@@ -32,7 +38,25 @@ export class AudioClip {
         return time >= this.offset && time <= this.offset + this.duration;
     }
 
+    get volume() {
+        return this._volume;
+    }
+
+    get end() {
+        return this.offset + this.duration;
+    }
+
+    get loopDuration() {
+        return this.timer.loopDuration;
+    }
+
+    set volume(value : number) {
+        this._volume = value;
+        this.audio.volume = value / 100;
+    }
+
     tryPlay() {
+        if (this.muted) return;
         const TIMER_OFFSET = 15;
 
         if (!this.loaded || !this.timer.playing) return;
@@ -51,12 +75,38 @@ export class AudioClip {
         // console.log(`Playing clip at ${this.offset} with offset ${playOffset}`);
         this.audio.currentTime = playOffset / 1000;
         this.audio.play();
+        this.onPlayingChanged.emit(true);
         // Try playing at the next loop
         setTimeout(() => this.tryPlay(), this.timer.loopDuration - playOffset - TIMER_OFFSET);
+        
+        // Stop when done
+        setTimeout(() => this.tryStop(), this.duration - playOffset - TIMER_OFFSET);
+    }
+
+    tryStop() {
+        if (!this.playing) {
+            this.onPlayingChanged.emit(false);
+            return;
+        }
+
+        let time = this.timer.time;
+        let timeUntil = this.offset + this.duration - time;
+        if (timeUntil >= this.timer.loopDuration) timeUntil -= this.timer.loopDuration;
+        setTimeout(() => this.tryStop(), timeUntil);
     }
 
     pause() {
         // console.log(`Pausing clip at ${this.offset}`);
         this.audio.pause();
+        this.onPlayingChanged.emit(false);
+    }
+
+    toggleMuted() {
+        this.muted = !this.muted;
+        if (this.muted) {
+            this.pause();
+        } else {
+            this.tryPlay();
+        }
     }
 }
