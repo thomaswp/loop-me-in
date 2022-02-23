@@ -1,4 +1,4 @@
-import { ChangeHandler } from "../util/Handler";
+import { ChangeHandler, Handler } from "../util/Handler";
 import { Timer } from "./Timer";
 
 export class AudioClip {
@@ -7,18 +7,21 @@ export class AudioClip {
     readonly offset: number;
     readonly timer: Timer;
     readonly onPlayingChanged = new ChangeHandler<boolean>(false);
+    readonly onDataFiltered = new Handler<void>();
 
-    _muted = false;
+    private _muted = false;
     // volume = 100;
-    _volume = 100;
+    private _volume = 100;
+    private _filteredData: number[];
 
     private audio: HTMLAudioElement;
     private loaded = false;
 
-    constructor(timer: Timer, source: string, offset: number, duration: number) {
+    constructor(timer: Timer, source: string, offset: number, duration: number, chunks?: Blob) {
         this.timer = timer;
         this.source = source;
         this.duration = duration;
+
         // this.offset = offset < 0 ? offset + this.timer.loopDuration : offset;
         // Use negative offsets for really-late starting clips so they get played.
         if (offset > timer.loopDuration - 500) offset -= timer.loopDuration;
@@ -34,6 +37,12 @@ export class AudioClip {
         }, this);
 
         timer.onPause.add(_ => this.pause(), this);
+        
+        if (chunks) {
+            this.createFilteredData(chunks);
+        } else {
+            this.createFilteredData(this.createChunks());
+        }
     }
 
     get playing() {
@@ -65,6 +74,10 @@ export class AudioClip {
     set muted(value: boolean) {
         this._muted = value;
         if (!value && this.playing) this.tryPlay();
+    }
+
+    get filteredData() : number[] {
+        return this._filteredData;
     }
 
     tryPlay() {
@@ -126,5 +139,48 @@ export class AudioClip {
         this.pause();
         this.timer.onPlay.remove(this);
         this.timer.onPause.remove(this);
+    }
+
+    createChunks() : Blob {
+        return null;
+    }
+
+    async createFilteredData(chunks : Blob) {
+        if (!chunks) return;
+
+        const audioContext = new AudioContext();
+        const buffer = await audioContext.decodeAudioData(await chunks.arrayBuffer());
+        const rawData = buffer.getChannelData(0);
+        console.log(rawData);
+
+        // let rawData = [];
+        // for (let chunk of chunks) {
+        //     let buffer = await chunk.arrayBuffer()
+        //     console.log(buffer);
+        //     let array = Array.from(new Uint8Array(buffer));
+        //     rawData = rawData.concat(array);
+        //     console.log(rawData);
+        // }
+
+        const samples = Math.round(this.duration / this.timer.loopDuration * 300);
+        const blockSize = Math.floor(rawData.length / samples); // the number of samples in each subdivision
+        let filteredData : number[] = [];
+        for (let i = 0; i < samples; i++) {
+            let blockStart = blockSize * i; // the location of the first sample in the block
+            let sum = 0;
+            for (let j = 0; j < blockSize; j++) {
+                sum = sum + Math.abs(rawData[blockStart + j]); // find the sum of all the samples in the block
+            }
+            filteredData.push(sum / blockSize); // divide the sum by the block size to get the average
+        }
+        console.log(filteredData);
+
+        const max = filteredData.reduce((a, b) => Math.max(a, Math.abs(b)), 0);
+        const scale = max == 0 ? 1 : Math.min(1 / max, 10);
+        console.log(scale);
+        filteredData = filteredData.map(x => x * scale);
+
+        this._filteredData = filteredData;
+        this.onDataFiltered.emit();
     }
 }

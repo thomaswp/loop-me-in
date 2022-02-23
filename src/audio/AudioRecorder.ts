@@ -13,7 +13,7 @@ export class AudioRecorder {
     static mediaStream: MediaStream;
 
     offset: number;
-    chunks: BlobPart[];
+    chunks: Blob[];
     fileName: string;
     mediaRecorder: MediaRecorder;
     recording: boolean;
@@ -76,7 +76,7 @@ export class AudioRecorder {
             const blob = new Blob(this.chunks, { 'type' : 'audio/ogg; codecs=opus' });
             const audioURL = window.URL.createObjectURL(blob);
             const duration = new Date().getTime() - this.startTime.getTime();
-            const clip = new AudioClip(timer, audioURL, this.offset, duration);
+            const clip = new AudioClip(timer, audioURL, this.offset, duration, blob);
             callback(clip);
         };
         this.recording = false;
