@@ -1,4 +1,5 @@
 import { AudioClip } from "./AudioClip";
+import { Part } from "./Part";
 import { Timer } from "./Timer";
 
 export class AudioRecorder {
@@ -69,14 +70,14 @@ export class AudioRecorder {
         // console.log("recorder started");
     }
 
-    stop(timer: Timer, callback: (clip: AudioClip) => void) {
+    stop(part: Part, callback: (clip: AudioClip) => void) {
         if (!this.recording) return;
         this.mediaRecorder.onstop = () => {
             // console.log('stop', this.chunks);
             const blob = new Blob(this.chunks, { 'type' : 'audio/ogg; codecs=opus' });
             const audioURL = window.URL.createObjectURL(blob);
             const duration = new Date().getTime() - this.startTime.getTime();
-            const clip = new AudioClip(timer, audioURL, this.offset, duration, blob);
+            const clip = new AudioClip(part, audioURL, this.offset, duration, blob);
             callback(clip);
         };
         this.recording = false;

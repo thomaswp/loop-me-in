@@ -1,11 +1,13 @@
 import { ChangeHandler, Handler } from "../util/Handler";
-import { Timer } from "./Timer";
+import { Part } from "./Part";
+import { Place, Timer } from "./Timer";
 
 export class AudioClip {
     readonly source: string;
     readonly duration: number;
     readonly offset: number;
     readonly timer: Timer;
+    readonly part: Part;
     readonly onPlayingChanged = new ChangeHandler<boolean>(false);
     readonly onDataFiltered = new Handler<void>();
 
@@ -17,14 +19,15 @@ export class AudioClip {
     private audio: HTMLAudioElement;
     private loaded = false;
 
-    constructor(timer: Timer, source: string, offset: number, duration: number, chunks?: Blob) {
+    constructor(part: Part, source: string, offset: number, duration: number, chunks?: Blob) {
+        const timer = part.timer;
         this.timer = timer;
+        this.part = part;
         this.source = source;
         this.duration = duration;
 
-        // this.offset = offset < 0 ? offset + this.timer.loopDuration : offset;
         // Use negative offsets for really-late starting clips so they get played.
-        if (offset > timer.loopDuration - 500) offset -= timer.loopDuration;
+        if (offset > part.duration - 500) offset -= part.duration;
         this.offset = offset;
         this.audio = new Audio(source);
         this.audio.onloadeddata = () => {
@@ -32,8 +35,8 @@ export class AudioClip {
             this.tryPlay();
         }
 
-        timer.onPlay.add(_ => {
-            this.tryPlay();
+        timer.onPartStarted.add(place => {
+            this.tryPlay(place);
         }, this);
 
         timer.onPause.add(_ => this.pause(), this);
@@ -46,16 +49,15 @@ export class AudioClip {
     }
 
     get playing() {
-        const time = this.timer.time;
+        if (!this.timer.playing) return false;
+        const place = this.timer.getPlace();
+        if (place.part != this.part) return false;
+        const time = place.localTime;
         return time >= this.offset && time <= this.offset + this.duration;
     }
 
     get end() {
         return this.offset + this.duration;
-    }
-
-    get loopDuration() {
-        return this.timer.loopDuration;
     }
 
     get volume() {
@@ -80,15 +82,26 @@ export class AudioClip {
         return this._filteredData;
     }
 
-    tryPlay() {
-        if (this.muted) return;
-        const TIMER_OFFSET = 15;
+    get partDuration() {
+        return this.part.duration
+    }
 
+    tryPlay(place?: Place) {
+        if (this.muted) return;
         if (!this.loaded || !this.timer.playing) return;
-        const time = this.timer.time;
+
+        if (!place) place = this.timer.getPlace();
+        // If this part isn't playing or this clip is done, return
+        if (place.part != this.part) return;
+        if (place.localTime > this.end) return;
+
+        const TIMER_OFFSET = 15;
+        const time = place.localTime;
+
+        // We calculate the time until this clip plays. We only worry
+        // about the current loop, since tryPlay will be called again
+        // when this Part repeats.
         let timeUntil = this.offset - time;
-        // If the clip has already stopped, we calculate time until loop
-        if (timeUntil < -this.duration) timeUntil += this.timer.loopDuration;
         if (timeUntil > 0) {
             setTimeout(() => {
                 this.tryPlay()
@@ -97,15 +110,13 @@ export class AudioClip {
         }
         
         let playOffset = -timeUntil;
-        // console.log(`Playing clip at ${this.offset} with offset ${playOffset}`);
+        console.log(`Playing clip at ${this.offset} with offset ${playOffset}`);
         this.audio.currentTime = playOffset / 1000;
         this.audio.play();
         this.onPlayingChanged.emit(true);
-        // Try playing at the next loop
-        setTimeout(() => this.tryPlay(), this.timer.loopDuration - playOffset - TIMER_OFFSET);
         
         // Stop when done
-        setTimeout(() => this.tryStop(), this.duration - playOffset - TIMER_OFFSET);
+        setTimeout(() => this.tryStop(), this.duration - playOffset);
     }
 
     tryStop() {
@@ -114,10 +125,8 @@ export class AudioClip {
             return;
         }
 
-        let time = this.timer.time;
-        let timeUntil = this.offset + this.duration - time;
-        if (timeUntil >= this.timer.loopDuration) timeUntil -= this.timer.loopDuration;
-        setTimeout(() => this.tryStop(), timeUntil);
+        const place = this.timer.getPlace();
+        setTimeout(() => this.tryStop(), this.end - place.localTime);
     }
 
     pause() {
@@ -137,7 +146,7 @@ export class AudioClip {
 
     delete() {
         this.pause();
-        this.timer.onPlay.remove(this);
+        this.timer.onPartStarted.remove(this);
         this.timer.onPause.remove(this);
     }
 
@@ -162,7 +171,7 @@ export class AudioClip {
         //     console.log(rawData);
         // }
 
-        const samples = Math.round(this.duration / this.timer.loopDuration * 300);
+        const samples = Math.round(this.duration / this.part.duration * 300);
         const blockSize = Math.floor(rawData.length / samples); // the number of samples in each subdivision
         let filteredData : number[] = [];
         for (let i = 0; i < samples; i++) {

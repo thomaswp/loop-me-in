@@ -1,28 +1,42 @@
 import { Handler } from "../util/Handler";
+import { Part } from "./Part";
+
+export interface Place {
+    part: Part;
+    localTime: number;
+    iteration: number;
+}
 
 export class Timer {
 
     playing = false;
-    loopDuration: number;
 
-    readonly onPlay = new Handler<number>();
-    readonly onPause = new Handler<number>();
-    readonly onLoop = new Handler<void>();
+    readonly onPlay = new Handler<Place>();
+    readonly onPause = new Handler<Place>();
+    // readonly onLoop = new Handler<void>();
+    readonly onPartStarted = new Handler<Place>();
+
+    readonly barDuration : number;
+
+    private _loopDuration: number;
 
     private lastPlayPauseTime = 0;
     private playStartDate: Date;
-    private loopTimeout: NodeJS.Timeout;
+    private partTimeout: NodeJS.Timeout;
+    private lastPlace = {} as Place;
+    private parts = [] as Part[];
 
     // private timeHandlers = new Map<number, Handler<number>>();
 
-    constructor(loopDuration: number) {
-        this.loopDuration = loopDuration;
+    constructor(barDuration: number) {
+        this.barDuration = barDuration;
+        this.updateParts();
     }
 
     get time() {
         if (!this.playing) return this.lastPlayPauseTime;
         let time = new Date().getTime() - this.playStartDate.getTime() + this.lastPlayPauseTime;
-        time %= this.loopDuration;
+        time %= this._loopDuration;
         return time;
     }
 
@@ -32,6 +46,36 @@ export class Timer {
             return;
         }
         this.lastPlayPauseTime = value;
+    }
+
+    get loopDuration() {
+        return this._loopDuration;
+    }
+
+    getPlace() : Place {
+        let time = this.time;
+        for (let part of this.parts) {
+            const duration = part.totalDuration;
+            if (time <= duration) {
+                let localTime = time % part.duration;
+                let iteration = Math.floor(time / part.duration);
+                if (iteration >= part.repetitions) iteration = part.repetitions - 1;
+                return {part, localTime, iteration};
+            }
+            time -= duration;
+        }
+        throw 'Missing parts?';
+    }
+
+    addPart(part: Part) {
+        this.parts.push(part);
+        this.updateParts();
+    }
+
+    private updateParts() {
+        this._loopDuration = this.parts.reduce((a, b) => a + b.totalDuration, 0);
+        this.startPartCallback(this._loopDuration - this.time);
+
     }
 
     togglePlay() {
@@ -44,20 +88,35 @@ export class Timer {
         this.lastPlayPauseTime = this.time;
         this.playing = true;
         this.playStartDate = new Date();
-        this.onPlay.emit(this.time);
+
+        const place = this.getPlace();
+        this.onPlay.emit(place);
+        this.onPartStarted.emit(place);
+        this.lastPlace = place;
         // for (let [offset, handler] of this.timeHandlers) {
         //     this.checkTimeHandler(offset, handler);
         // }
-        this.checkLoop(this.loopDuration - this.lastPlayPauseTime);
+        this.startPartCallback(place.part.duration - place.localTime);
     }
 
-    checkLoop(delay: number) {
-        this.loopTimeout = setTimeout(() => {
+    startPartCallback(delay: number) {
+        if (this.partTimeout) clearTimeout(this.partTimeout);
+        this.partTimeout = setTimeout(() => {
             if (!this.playing) return;
-            this.onLoop.emit();
-            let offset = this.time;
-            if (offset > this.loopDuration / 2) offset -= this.loopDuration;
-            this.checkLoop(this.loopDuration - offset);
+            const place = this.getPlace();
+            // Only trigger a part start if this is early in the clip, or we
+            // actually changed parts; otherwise we'll get a double-trigger
+            if (
+                place.localTime < place.part.duration / 2 ||
+                place.part != this.lastPlace.part || 
+                place.iteration != this.lastPlace.iteration
+            ) {
+                this.onPartStarted.emit(place);
+                this.lastPlace = place;
+            } else {
+                console.log('Skipping part start', place);
+            }
+            this.startPartCallback(place.part.duration - place.localTime);
         }, delay);
     }
 
@@ -66,9 +125,9 @@ export class Timer {
         this.lastPlayPauseTime = this.time;
         this.playing = false;
         this.playStartDate = null;
-        if (this.loopTimeout) clearTimeout(this.loopTimeout);
-        this.loopTimeout = null;
-        this.onPause.emit(this.time);
+        if (this.partTimeout) clearTimeout(this.partTimeout);
+        this.partTimeout = null;
+        this.onPause.emit(this.getPlace());
     }
 
     // checkTimeHandler(offset: number, handler: Handler<number>) {

@@ -49,15 +49,15 @@ export default {
     },
 
     left() : string {
-      return (this.clip.offset / this.clip.timer.loopDuration * 100) + '%';
+      return (this.clip.offset / this.clip.partDuration * 100) + '%';
     },
 
     leftDouble() : string {
-      return (this.clip.offset / this.clip.timer.loopDuration * 100 - 100) + '%';
+      return (this.clip.offset / this.clip.partDuration * 100 - 100) + '%';
     },
 
     width() : string {
-      return ((this.clip.duration) / this.clip.timer.loopDuration * 100) + '%';
+      return ((this.clip.duration) / this.clip.partDuration * 100) + '%';
     },
 
     background() {
@@ -65,8 +65,8 @@ export default {
     },
 
     doubled() {
-      console.log(this.clip.end > this.clip.loopDuration, this.clip.offset);
-      return this.clip.end > this.clip.loopDuration;
+      console.log(this.clip.end > this.clip.partDuration, this.clip.offset);
+      return this.clip.end > this.clip.partDuration;
     },
 
     // size() : Number {

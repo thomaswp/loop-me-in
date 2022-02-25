@@ -32,6 +32,7 @@ import { AudioRecorder } from '../audio/AudioRecorder'
 import Clip from './Clip.vue';
 import { Timer } from '../audio/Timer'
 import clickTrackURL from '../assets/audio/click.ogg'
+import { Part } from '../audio/Part';
 
 export default {
   name: "Project",
@@ -44,10 +45,15 @@ export default {
   data() {
     let barDuration = 2000;
     let barCount = 4;
+    let timer = new Timer(barDuration);
+    let parts = [
+      new Part(timer, barCount, 1),
+    ];
+    parts.forEach(p => timer.addPart(p));
     return {
-      clips: [] as AudioClip[],
+      parts: parts,
       audioRecorder: null as AudioRecorder,
-      timer: new Timer(barDuration * barCount),
+      timer: timer,
       barDurationMS: barDuration,
       barCount: barCount,
       recordOffset: 60,
@@ -63,6 +69,9 @@ export default {
     partDuration() {
       return this.barDurationMS * this.barCount;
     },
+    clips() {
+      return this.parts[0].clips;
+    }
   },
   methods: {
     toggleRecord() {
@@ -131,14 +140,14 @@ export default {
         this.scrubberValue = this.timer.time;
       }
     }, 10);
-    this.clips = [
-      new AudioClip(this.timer, clickTrackURL, 0, 2000),
-      new AudioClip(this.timer, clickTrackURL, 2000, 2000),
-      new AudioClip(this.timer, clickTrackURL, 4000, 2000),
-      new AudioClip(this.timer, clickTrackURL, 6000, 2000),
-    ];
-    this.timer.onLoop.add(() => {
-      console.log('loop!');
+    this.parts[0].clips.push(...[
+      new AudioClip(this.parts[0], clickTrackURL, 0, 2000),
+      new AudioClip(this.parts[0], clickTrackURL, 2000, 2000),
+      new AudioClip(this.parts[0], clickTrackURL, 4000, 2000),
+      new AudioClip(this.parts[0], clickTrackURL, 6000, 2000),
+    ]);
+    this.timer.onPartStarted.add((place) => {
+      console.log('part started', place);
       if (!this.recording) return;
       this.stopClip();
       this.startClip();
@@ -146,7 +155,7 @@ export default {
     
     let x = location.protocol + "//" + location.hostname + ':3000/api/hello';
     // let x = 'https://www.google.com'
-    console.log(x);
+    // console.log(x);
     fetch(x)
       .then(response => response.json())
       .then(data => this.server = data.hello);
