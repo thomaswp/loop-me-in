@@ -110,7 +110,7 @@ export class AudioClip {
         }
         
         let playOffset = -timeUntil;
-        console.log(`Playing clip at ${this.offset} with offset ${playOffset}`);
+        // console.log(`Playing clip at ${this.offset} with offset ${playOffset}`);
         this.audio.currentTime = playOffset / 1000;
         this.audio.play();
         this.onPlayingChanged.emit(true);
@@ -160,7 +160,7 @@ export class AudioClip {
         const audioContext = new AudioContext();
         const buffer = await audioContext.decodeAudioData(await chunks.arrayBuffer());
         const rawData = buffer.getChannelData(0);
-        console.log(rawData);
+        // console.log(rawData);
 
         // let rawData = [];
         // for (let chunk of chunks) {
@@ -182,11 +182,11 @@ export class AudioClip {
             }
             filteredData.push(sum / blockSize); // divide the sum by the block size to get the average
         }
-        console.log(filteredData);
+        // console.log(filteredData);
 
         const max = filteredData.reduce((a, b) => Math.max(a, Math.abs(b)), 0);
         const scale = max == 0 ? 1 : Math.min(1 / max, 10);
-        console.log(scale);
+        // console.log(scale);
         filteredData = filteredData.map(x => x * scale);
 
         this._filteredData = filteredData;

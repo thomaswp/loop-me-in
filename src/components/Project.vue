@@ -3,7 +3,7 @@
   <p>{{ server }}</p>
   <input 
     class="scrubber" type="range" ref="scrubber" min="0" 
-    :max="this.partDuration" 
+    :max="this.timer.loopDuration" 
     :value="scrubberValue"
     :disabled="recording"
     @input="pause"
@@ -43,19 +43,17 @@ export default {
     msg: String,
   },
   data() {
-    let barDuration = 2000;
     let barCount = 4;
-    let timer = new Timer(barDuration);
+    let timer = new Timer(2000);
     let parts = [
-      new Part(timer, barCount, 1),
+      new Part('A Part', timer, barCount, 2),
+      new Part('B Part', timer, barCount, 2),
     ];
     parts.forEach(p => timer.addPart(p));
     return {
       parts: parts,
       audioRecorder: null as AudioRecorder,
       timer: timer,
-      barDurationMS: barDuration,
-      barCount: barCount,
       recordOffset: 60,
       scrubberValue: 0,
       wasPlaying: false,
@@ -65,9 +63,6 @@ export default {
   computed: {
     recording() {
       return this.audioRecorder != null;
-    },
-    partDuration() {
-      return this.barDurationMS * this.barCount;
     },
     clips() {
       return this.parts[0].clips;
@@ -82,18 +77,18 @@ export default {
     startClip() {
       if (!this.playing) this.timer.play();
       if (this.recording) return;
+      const place = this.timer.getPlace();
       this.audioRecorder = new AudioRecorder(
+        place.part,
         // We offset the start time to account for mic delays
-        this.timer.time - this.recordOffset);
+        place.localTime - this.recordOffset);
       this.audioRecorder.start();
     },
 
     stopClip() {
       if (!this.recording) return;
-      this.audioRecorder.stop(this.timer, (audioURL) => {
-        console.log("stopping:", audioURL, this.clips);
-        this.clips.push(audioURL);
-      });
+      // TODO: find part
+      this.audioRecorder.stop();
       this.audioRecorder = null;
     },
 
@@ -140,14 +135,14 @@ export default {
         this.scrubberValue = this.timer.time;
       }
     }, 10);
-    this.parts[0].clips.push(...[
-      new AudioClip(this.parts[0], clickTrackURL, 0, 2000),
-      new AudioClip(this.parts[0], clickTrackURL, 2000, 2000),
-      new AudioClip(this.parts[0], clickTrackURL, 4000, 2000),
-      new AudioClip(this.parts[0], clickTrackURL, 6000, 2000),
-    ]);
+    this.parts.forEach(p => p.clips.push(...[
+      new AudioClip(p, clickTrackURL, 0, 2000),
+      new AudioClip(p, clickTrackURL, 2000, 2000),
+      new AudioClip(p, clickTrackURL, 4000, 2000),
+      new AudioClip(p, clickTrackURL, 6000, 2000),
+    ]));
     this.timer.onPartStarted.add((place) => {
-      console.log('part started', place);
+      // console.log('part started', place);
       if (!this.recording) return;
       this.stopClip();
       this.startClip();

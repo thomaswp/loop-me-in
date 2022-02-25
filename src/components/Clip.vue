@@ -113,11 +113,11 @@ export default {
     },
 
     renderCanvas(canvas: HTMLCanvasElement) {
-      console.log(arguments);
+      // console.log(arguments);
       const normalizedData = this.clip.filteredData;
       const dpr = window.devicePixelRatio || 1;
       const padding = 4;
-      console.log(canvas, canvas.offsetWidth, canvas.offsetHeight);
+      // console.log(canvas, canvas.offsetWidth, canvas.offsetHeight);
       canvas.width = canvas.offsetWidth * dpr;
       canvas.height = (canvas.offsetHeight + padding * 2) * dpr;
       const ctx = canvas.getContext("2d");
@@ -129,7 +129,7 @@ export default {
       for (let i = 0; i < normalizedData.length; i++) {
         const x = width * i;
         let height = Math.abs(normalizedData[i]) * (canvas.offsetHeight - padding);
-        console.log(height, normalizedData[i]);
+        // console.log(height, normalizedData[i]);
         if (height < 0) {
             height = 0;
         } else if (height > canvas.offsetHeight / 2) {

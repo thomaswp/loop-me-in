@@ -2,13 +2,16 @@ import { AudioClip } from "./AudioClip";
 import { Timer } from "./Timer";
 
 export class Part {
+    name: string;
+
     readonly timer: Timer;
     // TODO: This should be mutable, but it needs to update timer
     readonly bars: number;
     readonly repetitions: number
     readonly clips = [] as AudioClip[];
 
-    constructor(timer: Timer, bars: number, repititions: number) {
+    constructor(name: string, timer: Timer, bars: number, repititions: number) {
+        this.name = name;
         this.timer = timer;
         this.bars = bars;
         this.repetitions = repititions;
