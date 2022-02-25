@@ -1,4 +1,4 @@
-import { AudioClip } from "./AudioClip";
+import { AudioClip, PlayMode } from "./AudioClip";
 import { Part } from "./Part";
 import { Timer } from "./Timer";
 
@@ -68,13 +68,13 @@ export class AudioRecorder {
         this.recording = false;
     }
 
-    start() {
+    start(playMode: PlayMode) {
         this.recording = true;
         this.mediaRecorder.start();
         this.startTime = new Date();
         // console.log("recorder started");
 
-        this.clip = new AudioClip(this.part, this.offset);
+        this.clip = new AudioClip(this.part, this.offset, playMode);
         this.part.clips.push(this.clip);
         this.timeout = setInterval(() => {
             const duration = new Date().getTime() - this.startTime.getTime();

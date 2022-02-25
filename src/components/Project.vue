@@ -13,6 +13,8 @@
   <button @click="timer.togglePlay" :disabled="recording">{{ !timer.playing ? "Play" : "Pause"}}</button>
   <br />
   <button @click="toggleRecord">{{ !recording ? "Record" : "Stop"}}</button>
+  <br />
+  <play-mode-button @playModeChanged="updatePlayMode" :playMode="defaultPlayMode"/>
   
   <part-component 
     v-for="part in parts"
@@ -23,9 +25,10 @@
 
 <script lang="ts">
 
-import { AudioClip } from '../audio/AudioClip'
+import { AudioClip, PlayMode } from '../audio/AudioClip'
 import { AudioRecorder } from '../audio/AudioRecorder'
 import PartComponent from './PartComponent.vue';
+import PlayModeButton from './PlayModeButton.vue';
 import { Timer } from '../audio/Timer'
 import clickTrackURL from '../assets/audio/click4.mp3'
 import { Part } from '../audio/Part';
@@ -34,6 +37,7 @@ export default {
   name: "Project",
   components: {
     PartComponent,
+    PlayModeButton,
   },
   props: {
   },
@@ -53,6 +57,7 @@ export default {
       scrubberValue: 0,
       wasPlaying: false,
       server: '',
+      defaultPlayMode: PlayMode.Always,
     };
   },
   computed: {
@@ -74,7 +79,7 @@ export default {
         place.part,
         // We offset the start time to account for mic delays
         place.localTime - this.recordOffset);
-      this.audioRecorder.start();
+      this.audioRecorder.start(this.defaultPlayMode);
     },
 
     stopClip() {
@@ -87,7 +92,7 @@ export default {
     pause() {
       if (this.recording) return;
       if (!this.timer.playing) return;
-      console.log("pause");
+      // console.log("pause");
       this.timer.pause();
       this.wasPlaying = true;
       this.updateTime();
@@ -95,7 +100,7 @@ export default {
 
     scrub() {
       if (this.recording) return;
-      console.log("scrub");
+      // console.log("scrub");
       this.timer.pause();
       this.updateTime();
       if (this.wasPlaying) {
@@ -107,7 +112,11 @@ export default {
     updateTime() {
       const newTime = parseInt(this.$refs['scrubber'].value);
       this.timer.time = this.scrubberValue = newTime;
-    }
+    },
+
+    updatePlayMode(playMode) {
+      this.defaultPlayMode = playMode;
+    },
   },
   mounted() {
     AudioRecorder.initializeMedia(() => {
@@ -120,7 +129,7 @@ export default {
       }
     }, 10);
     this.parts.forEach(p => p.clips.push(...[
-      new AudioClip(p, 0).initialize(clickTrackURL, 8000),
+      new AudioClip(p, 0, this.defaultPlayMode).initialize(clickTrackURL, 8000),
       // new AudioClip(p, clickTrackURL, 2000, 2000),
       // new AudioClip(p, clickTrackURL, 4000, 2000),
       // new AudioClip(p, clickTrackURL, 6000, 2000),

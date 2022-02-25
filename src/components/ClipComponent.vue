@@ -20,6 +20,7 @@
           <button class="mute" @click="clip.toggleMuted">
             {{ clip.muted ? '🔈' : '🔊' }}
           </button>
+          <play-mode-button @playModeChanged="updatePlayMode" :playMode="clip.playMode" />
           <button class="delete" @click="$emit('deleted', clip)">
             ❌
           </button>
@@ -31,14 +32,18 @@
 
 <script lang="ts">
 import { AudioClip } from '../audio/AudioClip'
+import PlayModeButton from './PlayModeButton.vue';
 
 export default {
   name: "Clip",
   props: {
     clip: AudioClip,
   },
+  components: {
+    PlayModeButton,
+  },
   data() {
-    console.log(this.clip);
+    // console.log(this.clip);
     return {
       playing: false as boolean,
     };
@@ -86,6 +91,10 @@ export default {
 
     pause() {
       
+    },
+
+    updatePlayMode(playMode) {
+      this.clip.playMode = playMode;
     },
 
     /**

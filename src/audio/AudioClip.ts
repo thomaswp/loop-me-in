@@ -2,6 +2,13 @@ import { ChangeHandler, Handler } from "../util/Handler";
 import { Part } from "./Part";
 import { Place, Timer } from "./Timer";
 
+export enum PlayMode {
+    Once = 0,
+    Always,
+    EveryOther,
+    Echo,
+}
+
 export class AudioClip {
     readonly offset: number;
     readonly timer: Timer;
@@ -10,6 +17,7 @@ export class AudioClip {
     readonly onDataFiltered = new Handler<void>();
 
     duration: number;
+    playMode: PlayMode;
 
     private _muted = false;
     // volume = 100;
@@ -19,11 +27,13 @@ export class AudioClip {
     private audio: HTMLAudioElement;
     private loaded = false;
 
-    constructor(part: Part, offset: number) {
+    constructor(part: Part, offset: number, playMode: PlayMode) {
         const timer = part.timer;
         this.timer = timer;
         this.part = part;
+        this.playMode = playMode;
         this.duration = 0;
+        if (this.playMode == PlayMode.Once) this._muted = true;
 
         // Use negative offsets for really-late starting clips so they get played.
         if (offset > part.duration - 500) offset -= part.duration;
@@ -37,7 +47,7 @@ export class AudioClip {
         this.audio.oncanplaythrough = () => {
             if (this.loaded) return;
             this.loaded = true;
-            console.log('loaded', this);
+            // console.log('loaded', this);
             this.tryPlay();
         }
 
@@ -60,6 +70,8 @@ export class AudioClip {
         if (!this.timer.playing) return false;
         const place = this.timer.getPlace();
         if (place.part != this.part) return false;
+        // Only play every other time!
+        if (this.playMode == PlayMode.EveryOther && place.iteration % 2 != 0) return;
         const time = place.localTime;
         return time >= this.offset && time <= this.offset + this.duration;
     }
@@ -117,10 +129,10 @@ export class AudioClip {
             return;
         }
         
+        if (!this.playing) return;
         let playOffset = -timeUntil;
-        console.log(`Playing ${this.part.name} clip at ${this.offset} with offset ${playOffset} in ${this.timer.time}`);
+        // console.log(`Playing ${this.part.name} clip at ${this.offset} with offset ${playOffset} in ${this.timer.time}`);
         this.audio.currentTime = playOffset / 1000;
-        console.log(this.audio.currentTime);
         this.audio.play();
         this.onPlayingChanged.emit(true);
         
@@ -130,9 +142,13 @@ export class AudioClip {
 
     tryStop() {
         if (!this.playing) {
-            console.log(`Stopping ${this.part.name} clip at ${this.offset} at duration ${this.duration} with ${this.audio.currentTime}`);
+            // console.log(`Stopping ${this.part.name} clip at ${this.offset} at duration ${this.duration} with ${this.audio.currentTime}`);
             // this.audio.pause();
             this.onPlayingChanged.emit(false);
+            if (this.playMode == PlayMode.Once || this.playMode == PlayMode.Echo) {
+                // console.log('Muting', this);
+                this.muted = true;
+            }
             return;
         }
 
