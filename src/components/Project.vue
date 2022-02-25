@@ -1,5 +1,6 @@
 <template>
-  <h1>Record</h1>
+  <h1>Record!</h1>
+  <p>{{ server }}</p>
   <input 
     class="scrubber" type="range" ref="scrubber" min="0" 
     :max="this.partDuration" 
@@ -52,6 +53,7 @@ export default {
       recordOffset: 60,
       scrubberValue: 0,
       wasPlaying: false,
+      server: '',
     };
   },
   computed: {
@@ -141,6 +143,16 @@ export default {
       this.stopClip();
       this.startClip();
     });
+    
+    let x = location.protocol + "//" + location.hostname + ':3000/api/hello';
+    // let x = 'https://www.google.com'
+    console.log(x);
+    fetch(x)
+      .then(response => response.json())
+      .then(data => this.server = data.hello);
+      // .then(response => response.text())
+      // .then(data => console.log(data));
+
   },
 };
 </script>
