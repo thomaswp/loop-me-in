@@ -15,7 +15,7 @@
           </div> -->
           <canvas class="viz-canvas" ref="canvas" />
         </div>
-        <div class="ui">
+        <div class="ui" v-if="clip.loaded">
           <input class="volume" type="range" v-model="clip.volume" max="100" min="0" :disabled="clip.muted">
           <button class="mute" @click="clip.toggleMuted">
             {{ clip.muted ? '🔈' : '🔊' }}
@@ -61,11 +61,11 @@ export default {
     },
 
     background() {
-      return this.playing ? '#111' : '#444';
+      return this.playing ? '#efc94d' : '#444';
     },
 
     doubled() {
-      console.log(this.clip.end > this.clip.partDuration, this.clip.offset);
+      // console.log(this.clip.end > this.clip.partDuration, this.clip.offset);
       return this.clip.end > this.clip.partDuration;
     },
 
@@ -180,6 +180,8 @@ export default {
   /* display: inline-block; */
   display: flex;
   align-items: center;
+  transition: background-color 0.5s;
+  opacity: 0.95;
 }
 
 .part0.clip-block {

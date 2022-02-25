@@ -21,6 +21,8 @@ export class AudioRecorder {
     mediaRecorder: MediaRecorder;
     recording: boolean;
     startTime: Date;
+    clip: AudioClip;
+    timeout;
 
 
     static initializeMedia(callback) {
@@ -71,17 +73,24 @@ export class AudioRecorder {
         this.mediaRecorder.start();
         this.startTime = new Date();
         // console.log("recorder started");
+
+        this.clip = new AudioClip(this.part, this.offset);
+        this.part.clips.push(this.clip);
+        this.timeout = setInterval(() => {
+            const duration = new Date().getTime() - this.startTime.getTime();
+            this.clip.duration = duration;
+        }, 15);
     }
 
     stop() {
         if (!this.recording) return;
         this.mediaRecorder.onstop = () => {
+            clearTimeout(this.timeout);
             // console.log('stop', this.chunks);
             const blob = new Blob(this.chunks, { 'type' : 'audio/ogg; codecs=opus' });
             const audioURL = window.URL.createObjectURL(blob);
             const duration = new Date().getTime() - this.startTime.getTime();
-            const clip = new AudioClip(this.part, audioURL, this.offset, duration, blob);
-            this.part.clips.push(clip);
+            this.clip.initialize(audioURL, duration, blob);
             // console.log("adding", clip, "to", this.part);
         };
         this.recording = false;

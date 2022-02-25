@@ -11,36 +11,31 @@
   />
   <br />
   <button @click="timer.togglePlay" :disabled="recording">{{ !timer.playing ? "Play" : "Pause"}}</button>
-  <p>
-    Clips: {{ clips.length }}
-  </p>
-  <div class="clip-container">
-    <clip
-      v-for="clip in clips"
-      :key="clip"
-      :clip="clip"
-      @deleted="deleteClip"
-    />
-  </div>
+  <br />
   <button @click="toggleRecord">{{ !recording ? "Record" : "Stop"}}</button>
+  
+  <part-component 
+    v-for="part in parts"
+    :key="part"
+    :part="part"
+  />
 </template>
 
 <script lang="ts">
 
 import { AudioClip } from '../audio/AudioClip'
 import { AudioRecorder } from '../audio/AudioRecorder'
-import Clip from './Clip.vue';
+import PartComponent from './PartComponent.vue';
 import { Timer } from '../audio/Timer'
-import clickTrackURL from '../assets/audio/click.ogg'
+import clickTrackURL from '../assets/audio/click4.mp3'
 import { Part } from '../audio/Part';
 
 export default {
   name: "Project",
   components: {
-    Clip
+    PartComponent,
   },
   props: {
-    msg: String,
   },
   data() {
     let barCount = 4;
@@ -64,9 +59,6 @@ export default {
     recording() {
       return this.audioRecorder != null;
     },
-    clips() {
-      return this.parts[0].clips;
-    }
   },
   methods: {
     toggleRecord() {
@@ -90,14 +82,6 @@ export default {
       // TODO: find part
       this.audioRecorder.stop();
       this.audioRecorder = null;
-    },
-
-    deleteClip(clip: AudioClip) {
-      clip.delete();
-      let index = this.clips.indexOf(clip);
-      if (index >= 0) {  
-        this.clips.splice(index, 1);
-      }
     },
 
     pause() {
@@ -136,10 +120,10 @@ export default {
       }
     }, 10);
     this.parts.forEach(p => p.clips.push(...[
-      new AudioClip(p, clickTrackURL, 0, 2000),
-      new AudioClip(p, clickTrackURL, 2000, 2000),
-      new AudioClip(p, clickTrackURL, 4000, 2000),
-      new AudioClip(p, clickTrackURL, 6000, 2000),
+      new AudioClip(p, 0).initialize(clickTrackURL, 8000),
+      // new AudioClip(p, clickTrackURL, 2000, 2000),
+      // new AudioClip(p, clickTrackURL, 4000, 2000),
+      // new AudioClip(p, clickTrackURL, 6000, 2000),
     ]));
     this.timer.onPartStarted.add((place) => {
       // console.log('part started', place);
@@ -164,15 +148,6 @@ export default {
 
 .scrubber {
   width: 80%;
-}
-
-.clip-container {
-  width: 80%;
-  border: 2px black solid;
-  background-color: #eee;
-  margin-left: auto;
-  margin-right: auto;
-  text-align: left;
 }
 
 </style>
