@@ -1,12 +1,16 @@
 <template>
   <h3>{{ part.name }} ({{clips.length}} clips) </h3>
   <div class="clip-container">
-    <clip-component
+    <template
       v-for="clip in clips"
       :key="clip"
-      :clip="clip"
-      @deleted="deleteClip"
-    />
+    >
+      <clip-component
+        v-if="!clip.hidden"
+        :clip="clip"
+        @deleted="deleteClip"
+      />
+    </template>
   </div>
 </template>
 

@@ -152,6 +152,7 @@ export default {
     this.clip.onPlayingChanged.add(
       (playing: boolean) => this.playing = playing
     );
+    this.clip.onLoaded.add(() => this.$forceUpdate());
     const canvas = this.$refs['canvas'][0] as HTMLCanvasElement;
     if (this.clip.filteredData) {
       this.renderCanvas(canvas);

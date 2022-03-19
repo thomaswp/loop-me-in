@@ -30,8 +30,12 @@ import { AudioRecorder } from '../audio/AudioRecorder'
 import PartComponent from './PartComponent.vue';
 import PlayModeButton from './PlayModeButton.vue';
 import { Timer } from '../audio/Timer'
-import clickTrackURL from '../assets/audio/click4.mp3'
+import clickTrackURL from '../assets/audio/click.mp3'
+// import clickTrackURL from '../assets/audio/click60.mp3'
+import click4TrackURL from '../assets/audio/click4.mp3'
 import { Part } from '../audio/Part';
+import { Store, StoreObject } from '../store/Store'
+import { StoreClient } from '../store/StoreClient'
 
 export default {
   name: "Project",
@@ -42,11 +46,11 @@ export default {
   props: {
   },
   data() {
-    let barCount = 4;
     let timer = new Timer(2000);
     let parts = [
-      new Part('A Part', timer, barCount, 2),
-      new Part('B Part', timer, barCount, 2),
+      new Part('A Part', timer, 4, 1),
+      new Part('B Part', timer, 4, 1),
+      // new Part('B Part', timer, 4, 2),
     ];
     parts.forEach(p => timer.addPart(p));
     return {
@@ -58,6 +62,7 @@ export default {
       wasPlaying: false,
       server: '',
       defaultPlayMode: PlayMode.Always,
+      store: null as Store,
     };
   },
   computed: {
@@ -119,6 +124,21 @@ export default {
     },
   },
   mounted() {
+
+    const urlParams = new URLSearchParams(window.location.search);
+    this.store = new Store(urlParams.get('sessionID'));
+    const isNew = !urlParams.has('sessionID');
+    if (!isNew) {
+      window.history.replaceState('', '', window.location + '?sessionID=' + this.store.sessionID);
+    }
+    console.log(this.store);
+    const base = location.protocol + "//" + location.hostname + ':3000/api/';
+    const client = new StoreClient(this.store, base);
+    setInterval(() => {
+      client.sync(true);
+      console.log(this.store);
+    }, 2000);
+
     AudioRecorder.initializeMedia(() => {
       // TODO
     });
@@ -128,18 +148,25 @@ export default {
         this.scrubberValue = this.timer.time;
       }
     }, 10);
-    this.parts.forEach(p => p.clips.push(...[
-      new AudioClip(p, 0, this.defaultPlayMode).initialize(clickTrackURL, 8000),
-      // new AudioClip(p, clickTrackURL, 2000, 2000),
-      // new AudioClip(p, clickTrackURL, 4000, 2000),
-      // new AudioClip(p, clickTrackURL, 6000, 2000),
-    ]));
+
     this.timer.onPartStarted.add((place) => {
       // console.log('part started', place);
       if (!this.recording) return;
       this.stopClip();
       this.startClip();
     });
+
+    // if (isNew) {
+      this.parts.forEach(p => {
+        const duration = this.timer.barDuration;
+        // p.clips.push(new AudioClip(p, 0, this.defaultPlayMode).initialize(click4TrackURL, duration * 4));
+        for (let x = 0; x < p.bars; x++) {
+          const clip = new AudioClip(p, duration * x, this.defaultPlayMode).initialize(clickTrackURL, duration);
+          clip.hidden = true;
+          p.clips.push(clip);
+        }
+      });
+    // }
     
     let x = location.protocol + "//" + location.hostname + ':3000/api/hello';
     // let x = 'https://www.google.com'

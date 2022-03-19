@@ -7,5 +7,6 @@
     "isolatedModules": true,
     "noEmit": true,
     "types": ["vite/client"],
+    "esModuleInterop": true,
   }
 }

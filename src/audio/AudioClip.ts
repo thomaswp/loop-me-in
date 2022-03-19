@@ -1,3 +1,4 @@
+import { Store, WrapperObject } from "../store/Store";
 import { ChangeHandler, Handler } from "../util/Handler";
 import { Part } from "./Part";
 import { Place, Timer } from "./Timer";
@@ -15,9 +16,11 @@ export class AudioClip {
     readonly part: Part;
     readonly onPlayingChanged = new ChangeHandler<boolean>(false);
     readonly onDataFiltered = new Handler<void>();
+    readonly onLoaded = new Handler<void>();
 
     duration: number;
     playMode: PlayMode;
+    hidden = false;
 
     private _muted = false;
     // volume = 100;
@@ -49,6 +52,7 @@ export class AudioClip {
             this.loaded = true;
             // console.log('loaded', this);
             this.tryPlay();
+            this.onLoaded.emit();
         }
 
         this.timer.onPartStarted.add(place => {
@@ -62,6 +66,11 @@ export class AudioClip {
         } else {
             this.createFilteredData(this.createChunks());
         }
+
+        Store.I.add(new WrapperObject({
+            offset: this.offset,
+            duration: this.duration,
+        }));
 
         return this;
     }
