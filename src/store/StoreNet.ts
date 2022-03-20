@@ -1,4 +1,4 @@
-import { Store, StoreObject, StateIndex } from "./Store";
+import { Store, StoreObject, StateIndex } from "./Store.js";
 
 export abstract class StoreNet {
     sessionID: string;
@@ -9,17 +9,13 @@ export abstract class StoreNet {
         this.sessionID = store.sessionID;
     }
 
-    serializeMap<K,V>(map: Map<K,V>) {
-        return [...map.entries()];
-    }
-
-    deserializeMap<K,V>(array: object) : Map<K,V> {
-        return new Map(array as Iterable<[K, V]>);
+    deserializeMap(array: [[string, StateIndex]]) : Map<string, StateIndex> {
+        return new Map(array);
     }
 
     getBody(indices: Map<string, StateIndex>) {
         return {
-            indices: this.serializeMap(this.store.indices),
+            indices: this.store.getIndices(),
             updates: this.store.getUpdates(indices)
         };
     }

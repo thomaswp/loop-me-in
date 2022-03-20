@@ -128,7 +128,7 @@ export default {
     const urlParams = new URLSearchParams(window.location.search);
     this.store = new Store(urlParams.get('sessionID'));
     const isNew = !urlParams.has('sessionID');
-    if (!isNew) {
+    if (isNew) {
       window.history.replaceState('', '', window.location + '?sessionID=' + this.store.sessionID);
     }
     console.log(this.store);
@@ -156,7 +156,7 @@ export default {
       this.startClip();
     });
 
-    // if (isNew) {
+    if (isNew) {
       this.parts.forEach(p => {
         const duration = this.timer.barDuration;
         // p.clips.push(new AudioClip(p, 0, this.defaultPlayMode).initialize(click4TrackURL, duration * 4));
@@ -166,7 +166,7 @@ export default {
           p.clips.push(clip);
         }
       });
-    // }
+    }
     
     let x = location.protocol + "//" + location.hostname + ':3000/api/hello';
     // let x = 'https://www.google.com'

@@ -1,4 +1,4 @@
-import { Store, StateIndex } from "./Store.js";
+import { Store } from "./Store.js";
 import { StoreNet } from "./StoreNet.js";
 
 

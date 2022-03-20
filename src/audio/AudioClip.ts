@@ -1,4 +1,5 @@
-import { Store, WrapperObject } from "../store/Store";
+import { Storable } from "../store/Storable";
+import { Store } from "../store/Store";
 import { ChangeHandler, Handler } from "../util/Handler";
 import { Part } from "./Part";
 import { Place, Timer } from "./Timer";
@@ -10,7 +11,7 @@ export enum PlayMode {
     Echo,
 }
 
-export class AudioClip {
+export class AudioClip extends Storable<AudioClip> {
     readonly offset: number;
     readonly timer: Timer;
     readonly part: Part;
@@ -31,6 +32,7 @@ export class AudioClip {
     private loaded = false;
 
     constructor(part: Part, offset: number, playMode: PlayMode) {
+        super('AudioClip');
         const timer = part.timer;
         this.timer = timer;
         this.part = part;
@@ -41,6 +43,10 @@ export class AudioClip {
         // Use negative offsets for really-late starting clips so they get played.
         if (offset > part.duration - 500) offset -= part.duration;
         this.offset = offset;
+    }
+
+    getPrimitiveFields(): string[] {
+        return ['offset', 'duration'];
     }
 
     initialize(source: string, duration: number, chunks?: Blob) {
@@ -67,10 +73,7 @@ export class AudioClip {
             this.createFilteredData(this.createChunks());
         }
 
-        Store.I.add(new WrapperObject({
-            offset: this.offset,
-            duration: this.duration,
-        }));
+        Store.I.addObject(this.toObject());
 
         return this;
     }

@@ -29,6 +29,7 @@ export class StoreClient extends StoreNet {
     sync(force = false) {
         const url = this.createURL('sync');
         const body = this.getBody(this.lastPushIndices);
+        // console.log(body);
         if (!force && body.updates.length == 0)
             return;
         fetch(url, {
