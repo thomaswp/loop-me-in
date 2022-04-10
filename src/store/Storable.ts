@@ -2,9 +2,9 @@ import { StoreObject } from "./Store";
 import { v4 as uuidv4 } from 'uuid';
 
 
-interface Serializer {
-    serialize(object: object): object;
-    deserialize(object: object): object;
+interface Serializer<U> {
+    serialize(object: U): Promise<string>;
+    deserialize(object: string): Promise<U>;
 }
 
 export abstract class Storable<T> {
@@ -12,7 +12,7 @@ export abstract class Storable<T> {
     type: string;
     guid: string;
     primitiveFields: string[];
-    serializers = new Map() as Map<string, Serializer>;
+    serializers = new Map() as Map<string, Serializer<any>>;
     
     constructor(type: string) {
         this.type = type;
@@ -21,11 +21,14 @@ export abstract class Storable<T> {
     }
 
     abstract getPrimitiveFields(): string[];
+
+    onRead() {}
+    onConstructed() {}
     
-    registerSerializableField(
+    registerSerializableField<U>(
         name: string, 
-        serialize: (f: object) => object, 
-        deserialize: (f: object) => object
+        serialize: (f: U) => Promise<string>, 
+        deserialize: (f: string) => Promise<U>
     ) {
         this.serializers.set(name, {
             serialize,
@@ -33,31 +36,33 @@ export abstract class Storable<T> {
         })
     }
 
-    toObject(): StoreObject {
+    async toObject(): Promise<StoreObject> {
         const object = {};
         for (let field of this.primitiveFields) {
             object[field] = this[field];
         }
         for (let entry of this.serializers) {
             const field = entry[0];
-            object[field] = entry[1].serialize(this[field]);
+            object[field] = await entry[1].serialize(this[field]);
         }
         return {
-            ...object,
+            data: object,
             guid: this.guid,
             type: this.type,
             index: null,
         };
     }
 
-    readObject(object: StoreObject) {
+    async readObject(object: StoreObject) {
         this.guid = object.guid;
+        if (!object.data) return;
         for (let field of this.primitiveFields) {
-            this[field] = object[field];
+            this[field] = object.data[field];
         }
         for (let entry of this.serializers) {
             const field = entry[0];
-            this[field] = entry[1].deserialize(object[field]);
+            this[field] = await entry[1].deserialize(object.data[field]);
         }
+        this.onRead();
     }
 }

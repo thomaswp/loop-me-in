@@ -8,7 +8,7 @@ export interface StateIndex {
 
 export interface StoreObject {
     type: String;
-    // data: object;
+    data: object;
     guid: string;
     index: StateIndex;
 }
@@ -26,7 +26,7 @@ export class Store {
     
     static createObject(type: string, data: object) : StoreObject {
         return {
-            ...data,
+            data: data,
             type: type,
             index: null,
             guid: uuidv4(),
@@ -70,6 +70,7 @@ export class Store {
 
     private updateIndex(index: StateIndex) {
         if (index.guid == this.clientGuid) this.stateIndex = index;
+        // console.log('Updating index', index, this.stateIndex);
         this.indices.set(index.guid, index);
     }
 
@@ -80,13 +81,16 @@ export class Store {
 
     getUpdates(currentIndices: Map<string, StateIndex>) : StoreObject[] {
         const updates = [];
+        // console.log(currentIndices);
         for (let index of this.indices.values()) {
-            const currentVesion = currentIndices.has(index.guid) ? 
-                currentIndices.get(index.guid) : 0;
-            updates.push(...[...this.objects.values()].filter(o => 
+            const currentVersion = currentIndices.has(index.guid) ? 
+                currentIndices.get(index.guid).version : 0;
+            const toPush = [...this.objects.values()].filter(o => 
                 o.index.guid == index.guid && 
-                o.index.version > currentVesion
-            ));
+                o.index.version > currentVersion
+            );
+            // console.log('Pushing...', currentVersion, toPush);
+            updates.push(...toPush);
         }
         return updates;
     }
@@ -101,12 +105,43 @@ export class Store {
     }
 
     notifyUpdated(object: StoreObject, oldObject: StoreObject) {
-        this.listeners.forEach(l => l.updated(object, oldObject))
+        this.listeners.forEach(l => {
+            if (l.shouldUpdate(object)) l.updated(object, oldObject);
+        });
     }
 }
 
-export abstract class StoreListener {
-    updated(object: StoreObject, oldObject: StoreObject): void {
-        
+export interface StoreListener {
+    updated(object: StoreObject, oldObject: StoreObject): void;
+    shouldUpdate(object: StoreObject): boolean;
+}
+
+export abstract class TypeStoreListener implements StoreListener {
+    
+    type: string;
+
+    constructor(type: string) {
+        this.type = type;
     }
+
+    shouldUpdate(object: StoreObject): boolean {
+        return object != null && object.type == this.type;
+    }
+
+    abstract updated(object: StoreObject, oldObject: StoreObject): void;
+}
+
+export abstract class IDStoreListener implements StoreListener {
+    
+    id: string;
+
+    constructor(id: string) {
+        this.id = id;
+    }
+
+    shouldUpdate(object: StoreObject): boolean {
+        return object != null && object.guid == this.id;
+    }
+
+    abstract updated(object: StoreObject, oldObject: StoreObject): void;
 }

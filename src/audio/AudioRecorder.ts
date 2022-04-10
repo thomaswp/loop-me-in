@@ -1,3 +1,4 @@
+import { Store } from "../store/Store";
 import { AudioClip, PlayMode } from "./AudioClip";
 import { Part } from "./Part";
 import { Timer } from "./Timer";
@@ -91,6 +92,7 @@ export class AudioRecorder {
             const audioURL = window.URL.createObjectURL(blob);
             const duration = new Date().getTime() - this.startTime.getTime();
             this.clip.initialize(audioURL, duration, blob);
+            this.clip.toObject().then(o => Store.I.addObject(o));
             // console.log("adding", clip, "to", this.part);
         };
         this.recording = false;

@@ -25,6 +25,7 @@
 
 <script lang="ts">
 
+import { reactive, ref } from 'vue'
 import { AudioClip, PlayMode } from '../audio/AudioClip'
 import { AudioRecorder } from '../audio/AudioRecorder'
 import PartComponent from './PartComponent.vue';
@@ -34,7 +35,7 @@ import clickTrackURL from '../assets/audio/click.mp3'
 // import clickTrackURL from '../assets/audio/click60.mp3'
 import click4TrackURL from '../assets/audio/click4.mp3'
 import { Part } from '../audio/Part';
-import { Store, StoreObject } from '../store/Store'
+import { Store, StoreObject, TypeStoreListener } from '../store/Store'
 import { StoreClient } from '../store/StoreClient'
 
 export default {
@@ -47,14 +48,8 @@ export default {
   },
   data() {
     let timer = new Timer(2000);
-    let parts = [
-      new Part('A Part', timer, 4, 1),
-      new Part('B Part', timer, 4, 1),
-      // new Part('B Part', timer, 4, 2),
-    ];
-    parts.forEach(p => timer.addPart(p));
     return {
-      parts: parts,
+      parts: [],
       audioRecorder: null as AudioRecorder,
       timer: timer,
       recordOffset: 60,
@@ -122,21 +117,46 @@ export default {
     updatePlayMode(playMode) {
       this.defaultPlayMode = playMode;
     },
+
+    addPart(part, store = false) {
+      // part = reactive(part);
+      this.parts.push(part);
+      console.log('Adding', part, this.parts);
+      // part.listen();
+      this.timer.addPart(part);
+      if (store) {
+        part.toObject().then(o => Store.I.addObject(o));
+      }
+    }
   },
   mounted() {
 
     const urlParams = new URLSearchParams(window.location.search);
     this.store = new Store(urlParams.get('sessionID'));
+    
     const isNew = !urlParams.has('sessionID');
     if (isNew) {
       window.history.replaceState('', '', window.location + '?sessionID=' + this.store.sessionID);
+      
+      this.addPart(new Part('A Part', this.timer, 4, 1), true);
+      this.addPart(new Part('B Part', this.timer, 4, 1), true);
     }
     console.log(this.store);
+    Store.I.listeners.push({
+      updated: (o1, o2) => {
+        // TODO: Update old
+        console.log('Creating part:', o1, o2);
+        Part.create(this.timer, o1).then(p => this.addPart(p));
+      },
+      shouldUpdate: o => o.type === 'Part',
+    });
+
     const base = location.protocol + "//" + location.hostname + ':3000/api/';
     const client = new StoreClient(this.store, base);
+    client.sync(true);
     setInterval(() => {
       client.sync(true);
-      console.log(this.store);
+      this.$forceUpdate();
     }, 2000);
 
     AudioRecorder.initializeMedia(() => {
@@ -161,6 +181,7 @@ export default {
         const duration = this.timer.barDuration;
         // p.clips.push(new AudioClip(p, 0, this.defaultPlayMode).initialize(click4TrackURL, duration * 4));
         for (let x = 0; x < p.bars; x++) {
+          // TODO: Store?
           const clip = new AudioClip(p, duration * x, this.defaultPlayMode).initialize(clickTrackURL, duration);
           clip.hidden = true;
           p.clips.push(clip);

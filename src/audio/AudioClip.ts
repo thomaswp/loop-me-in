@@ -1,5 +1,5 @@
 import { Storable } from "../store/Storable";
-import { Store } from "../store/Store";
+import { Store, StoreObject } from "../store/Store";
 import { ChangeHandler, Handler } from "../util/Handler";
 import { Part } from "./Part";
 import { Place, Timer } from "./Timer";
@@ -18,24 +18,26 @@ export class AudioClip extends Storable<AudioClip> {
     readonly onPlayingChanged = new ChangeHandler<boolean>(false);
     readonly onDataFiltered = new Handler<void>();
     readonly onLoaded = new Handler<void>();
+    readonly partID: string;
 
     duration: number;
     playMode: PlayMode;
     hidden = false;
 
     private _muted = false;
-    // volume = 100;
     private _volume = 100;
     private _filteredData: number[];
-
+    
     private audio: HTMLAudioElement;
     private loaded = false;
+    private chunks: Blob;
 
     constructor(part: Part, offset: number, playMode: PlayMode) {
         super('AudioClip');
         const timer = part.timer;
         this.timer = timer;
         this.part = part;
+        this.partID = part.guid;
         this.playMode = playMode;
         this.duration = 0;
         if (this.playMode == PlayMode.Once) this._muted = true;
@@ -45,12 +47,41 @@ export class AudioClip extends Storable<AudioClip> {
         this.offset = offset;
     }
 
-    getPrimitiveFields(): string[] {
-        return ['offset', 'duration'];
+    static async create(part: Part, obj: StoreObject) {
+        const clip = new AudioClip(part, 0, PlayMode.Once);
+        await clip.readObject(obj);
+        const audioURL = window.URL.createObjectURL(clip.chunks);
+        clip.initialize(audioURL, clip.duration, clip.chunks);
+        return clip;
     }
+
+    getPrimitiveFields(): string[] {
+        this.registerSerializableField(
+            'chunks',
+            (blob: Blob) => (AudioClip.blobToBase64(blob)),
+            (string: string) => (fetch(string).then(res => res.blob())),
+        );
+        this.registerSerializableField(
+            'playMode',
+            (mode: PlayMode) => (new Promise(r => r(mode.toString()))),
+            (string: string) => (PlayMode[string]),
+        );
+        return ['offset', 'duration', 'partID', 'muted'];
+    }
+
+    static blobToBase64(blob: Blob): Promise<string> {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = function () {
+            resolve(reader.result as string);
+            };
+            reader.readAsDataURL(blob);
+        });
+    };
 
     initialize(source: string, duration: number, chunks?: Blob) {
         this.duration = duration;
+        this.chunks = chunks;
 
         this.audio = new Audio(source);
         this.audio.oncanplaythrough = () => {
@@ -73,15 +104,13 @@ export class AudioClip extends Storable<AudioClip> {
             this.createFilteredData(this.createChunks());
         }
 
-        Store.I.addObject(this.toObject());
-
         return this;
     }
 
     get playing() {
         if (!this.timer.playing) return false;
         const place = this.timer.getPlace();
-        if (place.part != this.part) return false;
+        if (place.part.guid != this.part.guid) return false;
         // Only play every other time!
         if (this.playMode == PlayMode.EveryOther && place.iteration % 2 != 0) return;
         const time = place.localTime;
@@ -119,13 +148,16 @@ export class AudioClip extends Storable<AudioClip> {
     }
 
     tryPlay(place?: Place) {
+        // console.log('Trying to play', this);
         if (this.muted) return;
         if (!this.loaded || !this.timer.playing) return;
 
         if (!place) place = this.timer.getPlace();
+        // console.log(this.timer, place.part, this.part);
         // If this part isn't playing or this clip is done, return
-        if (place.part != this.part) return;
+        if (place.part.guid != this.part.guid) return;
         if (place.localTime > this.end) return;
+        // console.log(place.localTime);
 
         const TIMER_OFFSET = 15;
         const time = place.localTime;
@@ -138,6 +170,7 @@ export class AudioClip extends Storable<AudioClip> {
             setTimeout(() => {
                 this.tryPlay()
             }, timeUntil - TIMER_OFFSET); // small offet
+            console.log('delaying for...', timeUntil);
             return;
         }
         
@@ -145,6 +178,7 @@ export class AudioClip extends Storable<AudioClip> {
         let playOffset = -timeUntil;
         // console.log(`Playing ${this.part.name} clip at ${this.offset} with offset ${playOffset} in ${this.timer.time}`);
         this.audio.currentTime = playOffset / 1000;
+        // console.log('Actually playing', this);
         this.audio.play();
         this.onPlayingChanged.emit(true);
         

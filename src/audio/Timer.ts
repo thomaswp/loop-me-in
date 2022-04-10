@@ -64,6 +64,7 @@ export class Timer {
             }
             time -= duration;
         }
+        console.log(this.parts);
         throw 'Missing parts?';
     }
 
