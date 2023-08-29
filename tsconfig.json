@@ -8,5 +8,6 @@
     "noEmit": true,
     "types": ["vite/client"],
     "esModuleInterop": true,
+    "jsx": "preserve"
   }
 }

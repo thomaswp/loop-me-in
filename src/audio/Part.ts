@@ -22,7 +22,6 @@ export class Part extends Storable<Part> {
     }
 
     listen() {
-        console.log("!!");
         Store.I.listeners.push({
             // TODO: surely there's a better way...
             shouldUpdate: o => o.type === 'AudioClip' && o.data['partID'] == this.guid,

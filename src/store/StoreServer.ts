@@ -9,7 +9,7 @@ export class StoreServer extends StoreNet {
     }
 
     receive(data: object) {
-        console.log(data);
+        // console.log(data);
         this.store.postUpdates(this.deserializePull(data));
         return this.getBody(this.deserializeMap(data['indices']));
     }

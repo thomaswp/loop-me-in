@@ -121,7 +121,7 @@ export default {
     addPart(part, store = false) {
       // part = reactive(part);
       this.parts.push(part);
-      console.log('Adding', part, this.parts);
+      // console.log('Adding', part, this.parts);
       // part.listen();
       this.timer.addPart(part);
       if (store) {
